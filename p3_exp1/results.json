@@ -3,6 +3,6 @@
     "dataset_config_name": "cb",
     "template_name": "can*we*infer",
     "evaluation": {
-        "accuracy": 0.5535714285714286
+        "accuracy": 0.08928571428571429
     }
 }

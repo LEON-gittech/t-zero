@@ -141,7 +141,7 @@ def parse_args():
         ),
     )
     # args = parser.parse_args()
-    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name can*we*infer --model_name_or_path bigscience/T0_3B --output_dir ./p3_exp1""".split(" "))
+    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name can*we*infer --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/llama-2-7b-bnb-4bit/ --output_dir ./p3_exp1""".split(" "))
 
     return args
 
@@ -201,14 +201,15 @@ def main():
     # download model & vocab.
     
     #——————————————————————————————————————————————————————————————————#
-    if args.config_name:
-        config = AutoConfig.from_pretrained(args.config_name)
-    elif args.model_name_or_path:
-        config = AutoConfig.from_pretrained(args.model_name_or_path)
-    else:
-        raise ValueError(
-            "Either `args.config_name` or `args.model_name_or_path` should be provided."
-        )
+    if "T0" in args.model_name_or_path:
+        if args.config_name:
+            config = AutoConfig.from_pretrained(args.config_name)
+        elif args.model_name_or_path:
+            config = AutoConfig.from_pretrained(args.model_name_or_path)
+        else:
+            raise ValueError(
+                "Either `args.config_name` or `args.model_name_or_path` should be provided."
+            )
     #——————————————————————————————————————————————————————————————————#
 
     if args.tokenizer_name:
@@ -229,15 +230,17 @@ def main():
             raise ValueError("Please define a pad token id.")
 
     #——————————————————————————————————————————————————————————————————#
-    model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
-        config=config,
-        model_name_or_path=args.model_name_or_path,
-        parallelize=args.parallelize,
-        load_in_4bit=True
-    )
+    if "T0" in args.model_name_or_path:
+        model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
+            config=config,
+            model_name_or_path=args.model_name_or_path,
+            parallelize=args.parallelize,
+            load_in_4bit=True
+        )
     #——————————————————————————————————————————————————————————————————#
-    # from unsloth import FastLanguageModel
-    # model,_ = FastLanguageModel.from_pretrained(args.model_name_or_path, dtype = torch.float16, load_in_4bit=True)
+    else:
+        from unsloth import FastLanguageModel
+        model,_ = FastLanguageModel.from_pretrained(args.model_name_or_path, dtype = torch.float16, load_in_4bit=True)
 
     # Preprocessing the datasets.
     # First we tokenize all the texts.
@@ -338,7 +341,7 @@ def main():
 
     # Use the device given by the `accelerator` object.
     #——————————————————————————————————————————————————————————————————#
-    if not args.parallelize:
+    if "T0" in args.model_name_or_path and not args.parallelize:
         model.to(accelerator.device)
     #——————————————————————————————————————————————————————————————————#
 
@@ -392,8 +395,8 @@ def main():
             # references = tokenizer.batch_decode(batch["labels"])
             # predictions = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"])
             for k in list(batch.keys()): batch[k] = batch[k].cuda()
-            # predictions = forward(batch)
-            predictions = model(batch)
+            if "T0" in args.model_name_or_path: predictions = model(batch)
+            else: predictions = forward(batch)
 
         metric.add_batch(
             predictions=accelerator.gather(predictions),
