@@ -28,6 +28,7 @@ import json
 import datasets
 import torch
 from datasets import load_dataset, load_metric
+import evaluate
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
@@ -42,6 +43,8 @@ from promptsource.templates import DatasetTemplates
 
 from t0.data_collator import DataCollatorForMultipleChoice
 from t0.model import ModelBase
+import sys
+sys.path.append("/opt/tiger/t-zero")
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +139,8 @@ def parse_args():
             "Note that this feature is still experimental in HF Transformers."
         ),
     )
-    args = parser.parse_args()
+    # args = parser.parse_args()
+    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name can*we*infer --model_name_or_path bigscience/T0_3B --output_dir ./p3_exp1""".split(" "))
 
     return args
 
@@ -194,6 +198,8 @@ def main():
     #
     # In distributed training, the .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
+    
+    #——————————————————————————————————————————————————————————————————#
     if args.config_name:
         config = AutoConfig.from_pretrained(args.config_name)
     elif args.model_name_or_path:
@@ -202,6 +208,7 @@ def main():
         raise ValueError(
             "Either `args.config_name` or `args.model_name_or_path` should be provided."
         )
+    #——————————————————————————————————————————————————————————————————#
 
     if args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name, use_fast=not args.use_slow_tokenizer, padding_side="left")
@@ -220,12 +227,16 @@ def main():
         if tokenizer.pad_token is None:
             raise ValueError("Please define a pad token id.")
 
-
+    #——————————————————————————————————————————————————————————————————#
     model = ModelBase.from_config(
         config=config,
         model_name_or_path=args.model_name_or_path,
-        parallelize=args.parallelize
+        parallelize=args.parallelize,
+        load_in_4bit=True
     )
+    #——————————————————————————————————————————————————————————————————#
+    # from unsloth import FastLanguageModel
+    # model,_ = FastLanguageModel.from_pretrained(args.model_name_or_path, dtype = torch.float16, load_in_4bit=True)
 
     # Preprocessing the datasets.
     # First we tokenize all the texts.
@@ -238,7 +249,7 @@ def main():
         if args.dataset_config_name is None
         else f"{args.dataset_name}/{args.dataset_config_name}"
     )
-    template = prompts[args.template_name]
+    template = prompts[args.template_name.replace("*"," ")]
 
     def preprocess_function(examples):
         bs = len(examples[column_names[0]])
@@ -325,15 +336,17 @@ def main():
 
 
     # Use the device given by the `accelerator` object.
+    #——————————————————————————————————————————————————————————————————#
     if not args.parallelize:
         model.to(accelerator.device)
+    #——————————————————————————————————————————————————————————————————#
 
     # Prepare everything with our `accelerator`.
-    eval_dataloader = accelerator.prepare(eval_dataloader)
+    # eval_dataloader = accelerator.prepare(eval_dataloader)
 
 
     # Metrics
-    metric = load_metric("accuracy")
+    metric = evaluate.load("accuracy")
 
     # Eval!
     total_batch_size = args.per_device_eval_batch_size * accelerator.num_processes
@@ -348,6 +361,11 @@ def main():
     model.eval()
     for batch in eval_dataloader:
         with torch.no_grad():
+            # generated_ids = model.generate(input_ids=batch["input_ids"].cuda(), attention_mask=batch["attention_mask"].cuda(), max_new_tokens=256)
+            # predictions = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+            # references = tokenizer.batch_decode(batch["labels"])
+            # predictions = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"])
+            for k in list(batch.keys()): batch[k] = batch[k].cuda()
             predictions = model(batch)
 
         metric.add_batch(
