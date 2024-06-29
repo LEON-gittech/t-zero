@@ -1,0 +1,8 @@
+{
+    "dataset_name": "super_glue",
+    "dataset_config_name": "cb",
+    "template_name": "can*we*infer",
+    "evaluation": {
+        "accuracy": 0.5535714285714286
+    }
+}

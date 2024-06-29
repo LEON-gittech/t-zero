@@ -24,6 +24,7 @@ import logging
 import os
 import random
 import json
+from typing import Optional
 
 import datasets
 import torch
@@ -42,7 +43,7 @@ from transformers import (
 from promptsource.templates import DatasetTemplates
 
 from t0.data_collator import DataCollatorForMultipleChoice
-from t0.model import ModelBase
+from t0.model import DecoderModel, EncoderDecoderModel, ModelBase
 import sys
 sys.path.append("/opt/tiger/t-zero")
 
@@ -228,7 +229,7 @@ def main():
             raise ValueError("Please define a pad token id.")
 
     #——————————————————————————————————————————————————————————————————#
-    model = ModelBase.from_config(
+    model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
         config=config,
         model_name_or_path=args.model_name_or_path,
         parallelize=args.parallelize,
@@ -342,7 +343,7 @@ def main():
     #——————————————————————————————————————————————————————————————————#
 
     # Prepare everything with our `accelerator`.
-    # eval_dataloader = accelerator.prepare(eval_dataloader)
+    eval_dataloader = accelerator.prepare(eval_dataloader)
 
 
     # Metrics
@@ -359,6 +360,31 @@ def main():
     progress_bar = tqdm(range(len(eval_dataloader)), disable=not accelerator.is_local_main_process)
 
     model.eval()
+
+    def forward(batch):
+        device = batch["input_ids"].device
+        _, prefix_length = batch["input_ids"].shape
+
+        model_inputs = {
+            "input_ids": torch.cat([batch["input_ids"], batch["labels"]], dim=-1),
+            "attention_mask": torch.cat([batch["attention_mask"], batch["labels_attention_mask"]], dim=-1),
+        }
+        # Set position ids correctly to take care of padding tokens between inputs_ids and labels
+        position_ids = torch.maximum(
+            torch.cumsum(model_inputs["attention_mask"].to(torch.long), dim=-1) - 1,
+            torch.zeros(1, dtype=torch.long, device=device)[None, None]
+        )
+        model_inputs["position_ids"] = position_ids
+
+        logits = model(**model_inputs).logits[:, prefix_length-1:-1]
+        masked_log_probs = batch["labels_attention_mask"].unsqueeze(-1) * torch.log_softmax(logits, dim=-1)
+        seq_token_log_probs = torch.gather(masked_log_probs, -1, batch["labels"].unsqueeze(-1))
+        seq_log_prob = seq_token_log_probs.squeeze(dim=-1).sum(dim=-1)
+        seq_log_prob = seq_log_prob.view(batch["targets"].size(0),
+                                         -1)  # TODO(Victor): this reshapes works based on the assumption that all examples have the same number of choices. the pre-processing doesn't make this assumption.
+        predictions = seq_log_prob.argmax(dim=-1)
+        return predictions
+
     for batch in eval_dataloader:
         with torch.no_grad():
             # generated_ids = model.generate(input_ids=batch["input_ids"].cuda(), attention_mask=batch["attention_mask"].cuda(), max_new_tokens=256)
@@ -366,6 +392,7 @@ def main():
             # references = tokenizer.batch_decode(batch["labels"])
             # predictions = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"])
             for k in list(batch.keys()): batch[k] = batch[k].cuda()
+            # predictions = forward(batch)
             predictions = model(batch)
 
         metric.add_batch(

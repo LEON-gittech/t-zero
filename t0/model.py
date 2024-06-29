@@ -27,7 +27,7 @@ class ModelBase(nn.Module):
         raise NotImplementedError
 
 class EncoderDecoderModel(ModelBase):
-    def __init__(self, config, model_name_or_path: Optional[str], parallelize: bool, **kwargs):
+    def __init__(self, model_name_or_path: Optional[str], parallelize: bool, config=None, **kwargs):
         """
 
         Args:
