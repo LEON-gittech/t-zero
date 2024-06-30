@@ -141,7 +141,7 @@ def parse_args():
         ),
     )
     # args = parser.parse_args()
-    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name can*we*infer --model_name_or_path google-t5/t5-3b --output_dir ./p3_exp1""".split(" "))
+    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name based*on*the*previous*passage --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp2 --output_dir ./p3_exp1""".split(" "))
 
     return args
 
@@ -158,7 +158,7 @@ def main():
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
+        level=logging.ERROR,
     )
     logger.info(accelerator.state)
 
@@ -237,8 +237,7 @@ def main():
         model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
             config=config,
             model_name_or_path=args.model_name_or_path,
-            parallelize=args.parallelize,
-            load_in_4bit=True
+            parallelize=args.parallelize
         )
     #——————————————————————————————————————————————————————————————————#
     else:

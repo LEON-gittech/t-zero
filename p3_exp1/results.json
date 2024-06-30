@@ -1,7 +1,7 @@
 {
     "dataset_name": "super_glue",
     "dataset_config_name": "cb",
-    "template_name": "can*we*infer",
+    "template_name": "based*on*the*previous*passage",
     "evaluation": {
         "accuracy": 0.08928571428571429
     }
