@@ -141,10 +141,13 @@ def parse_args():
         ),
     )
     # args = parser.parse_args()
-    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name can*we*infer --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/llama-2-7b-bnb-4bit/ --output_dir ./p3_exp1""".split(" "))
+    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name can*we*infer --model_name_or_path google-t5/t5-3b --output_dir ./p3_exp1""".split(" "))
 
     return args
 
+def is_T(name):
+    if "T0" in name or "t5" in name: return 1
+    else: return 0
 
 def main():
     args = parse_args()
@@ -201,7 +204,7 @@ def main():
     # download model & vocab.
     
     #——————————————————————————————————————————————————————————————————#
-    if "T0" in args.model_name_or_path:
+    if is_T(args.model_name_or_path):
         if args.config_name:
             config = AutoConfig.from_pretrained(args.config_name)
         elif args.model_name_or_path:
@@ -230,7 +233,7 @@ def main():
             raise ValueError("Please define a pad token id.")
 
     #——————————————————————————————————————————————————————————————————#
-    if "T0" in args.model_name_or_path:
+    if is_T(args.model_name_or_path):
         model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
             config=config,
             model_name_or_path=args.model_name_or_path,
@@ -341,7 +344,7 @@ def main():
 
     # Use the device given by the `accelerator` object.
     #——————————————————————————————————————————————————————————————————#
-    if "T0" in args.model_name_or_path and not args.parallelize:
+    if is_T(args.model_name_or_path) and not args.parallelize:
         model.to(accelerator.device)
     #——————————————————————————————————————————————————————————————————#
 
@@ -395,7 +398,7 @@ def main():
             # references = tokenizer.batch_decode(batch["labels"])
             # predictions = model(input_ids=batch["input_ids"], attention_mask=batch["attention_mask"])
             for k in list(batch.keys()): batch[k] = batch[k].cuda()
-            if "T0" in args.model_name_or_path: predictions = model(batch)
+            if is_T(args.model_name_or_path): predictions = model(batch)
             else: predictions = forward(batch)
 
         metric.add_batch(
