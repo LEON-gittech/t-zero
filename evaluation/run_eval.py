@@ -140,13 +140,17 @@ def parse_args():
             "Note that this feature is still experimental in HF Transformers."
         ),
     )
-    # args = parser.parse_args()
-    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name copa --template_name …why?*C1*or*C2 --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp1_merged --output_dir ./p3_exp1""".split(" "))
+    parser.add_argument(
+        "--adapter",
+        default = 0
+    )
+    args = parser.parse_args()
+    # args = parser.parse_args("""--dataset_name super_glue --dataset_config_name copa --template_name …why?*C1*or*C2 --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp2_merged --output_dir ./p3_exp2""".split(" "))
 
     return args
 
 def is_T(name):
-    if "T0" in name or "t5" in name or 'config.json' in os.listdir(name): return 1
+    if "T0" in name or "t5" in name or 'config.json' or "adapter_config.json" in os.listdir(name): return 1
     else: return 0
 
 def main():
@@ -204,7 +208,8 @@ def main():
     # download model & vocab.
     
     #——————————————————————————————————————————————————————————————————#
-    if is_T(args.model_name_or_path):
+    config = None
+    if is_T(args.model_name_or_path) and args.adapter!=1:
         if args.config_name:
             config = AutoConfig.from_pretrained(args.config_name)
         elif args.model_name_or_path:
@@ -234,11 +239,20 @@ def main():
 
     #——————————————————————————————————————————————————————————————————#
     if is_T(args.model_name_or_path):
-        model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
-            config=config,
-            model_name_or_path=args.model_name_or_path,
-            parallelize=args.parallelize
-        )
+        if args.adapter!=1:
+            model: Optional(EncoderDecoderModel, DecoderModel) = ModelBase.from_config(
+                config=config,
+                model_name_or_path=args.model_name_or_path,
+                parallelize=args.parallelize,
+                adapter=0
+            )
+        else:
+            model = EncoderDecoderModel(
+                model_name_or_path=args.model_name_or_path,
+                parallelize=args.parallelize,
+                adapter=1
+            )
+        print(model._model)
     #——————————————————————————————————————————————————————————————————#
     else:
         print("use unsloth model")

@@ -26,6 +26,7 @@ class ModelBase(nn.Module):
 
         raise NotImplementedError
 
+from peft import PeftModel
 class EncoderDecoderModel(ModelBase):
     def __init__(self, model_name_or_path: Optional[str], parallelize: bool, config=None, **kwargs):
         """
@@ -39,18 +40,22 @@ class EncoderDecoderModel(ModelBase):
         super(EncoderDecoderModel, self).__init__()
         logger.info("Building EncoderDecoderModel")
         if model_name_or_path:
-            if "T5ForConditionalGeneration" in config.architectures:
-                self._model = T5ForConditionalGeneration.from_pretrained(
-                    model_name_or_path,
-                    from_tf=bool(".ckpt" in model_name_or_path),
-                    config=config,
-                )
+            if kwargs["adapter"]:
+                model = AutoModelForSeq2SeqLM.from_pretrained("google/t5-xl-lm-adapt", torch_dtype=torch.bfloat16)
+                self._model = PeftModel.from_pretrained(model, model_name_or_path)
             else:
-                self._model = AutoModelForSeq2SeqLM.from_pretrained(
-                    model_name_or_path,
-                    from_tf=bool(".ckpt" in model_name_or_path),
-                    config=config,
-                )
+                if "T5ForConditionalGeneration" in config.architectures:
+                    self._model = T5ForConditionalGeneration.from_pretrained(
+                        model_name_or_path,
+                        from_tf=bool(".ckpt" in model_name_or_path),
+                        config=config,
+                    )
+                else:
+                    self._model = AutoModelForSeq2SeqLM.from_pretrained(
+                        model_name_or_path,
+                        from_tf=bool(".ckpt" in model_name_or_path),
+                        config=config,
+                    )
         else:
             logger.info("Training new model from scratch")
             self._model = AutoModelForSeq2SeqLM.from_config(config)
