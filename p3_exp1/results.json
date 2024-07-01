@@ -1,8 +1,8 @@
 {
     "dataset_name": "super_glue",
-    "dataset_config_name": "cb",
-    "template_name": "based*on*the*previous*passage",
+    "dataset_config_name": "copa",
+    "template_name": "\u2026why?*C1*or*C2",
     "evaluation": {
-        "accuracy": 0.08928571428571429
+        "accuracy": 0.5192307692307693
     }
 }

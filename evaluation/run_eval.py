@@ -140,8 +140,8 @@ def parse_args():
             "Note that this feature is still experimental in HF Transformers."
         ),
     )
-    args = parser.parse_args()
-    # args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name based*on*the*previous*passage --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp2 --output_dir ./p3_exp1""".split(" "))
+    # args = parser.parse_args()
+    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name copa --template_name …why?*C1*or*C2 --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp1_merged --output_dir ./p3_exp1""".split(" "))
 
     return args
 
@@ -188,7 +188,7 @@ def main():
             assert args.dataset_config_name in ["dev_r1", "dev_r2", "dev_r3"], error_message
             raw_datasets = load_dataset(args.dataset_name, split=args.dataset_config_name)
         else:
-            raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name, split="validation")
+            raw_datasets = load_dataset("bigscience/P3", 'super_glue_copa__why_C1_or_C2', split="validation")
     #TODO(Victor): enable loading pre-processed dataset from https://huggingface.co/datasets/bigscience/P3
 
     # Trim a number of evaluation examples
@@ -269,12 +269,16 @@ def main():
                 k: examples[k][i]
                 for k in column_names
             }
-            input, target = template.apply(ex)
-            ex_answer_choices = template.get_answer_choices_list(ex)
-            assert target in ex_answer_choices
+            # input, target = template.apply(ex)
+            # ex_answer_choices = template.get_answer_choices_list(ex)
+            # print(column_names)
+            # print(ex)
+            input, target = ex["inputs_pretokenized"], ex["targets_pretokenized"]
+            ex_answer_choices = ex["answer_choices"]
             input_texts.append(input)
             target_texts.append(target)
             answer_choices_texts.append(ex_answer_choices)
+
 
         tokenized_inputs = tokenizer(
             input_texts,
