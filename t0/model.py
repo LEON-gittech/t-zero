@@ -3,7 +3,7 @@ from typing import Optional
 
 import torch
 from torch import nn
-from transformers import AutoModelForSeq2SeqLM, AutoModelForCausalLM, MODEL_FOR_CAUSAL_LM_MAPPING, \
+from transformers import T5ForConditionalGeneration, AutoModelForSeq2SeqLM, AutoModelForCausalLM, MODEL_FOR_CAUSAL_LM_MAPPING, \
     MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING
 
 logger = logging.getLogger(__name__)
@@ -39,11 +39,18 @@ class EncoderDecoderModel(ModelBase):
         super(EncoderDecoderModel, self).__init__()
         logger.info("Building EncoderDecoderModel")
         if model_name_or_path:
-            self._model = AutoModelForSeq2SeqLM.from_pretrained(
-                model_name_or_path,
-                from_tf=bool(".ckpt" in model_name_or_path),
-                config=config,
-            )
+            if "T5ForConditionalGeneration" in config.architectures:
+                self._model = T5ForConditionalGeneration.from_pretrained(
+                    model_name_or_path,
+                    from_tf=bool(".ckpt" in model_name_or_path),
+                    config=config,
+                )
+            else:
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(
+                    model_name_or_path,
+                    from_tf=bool(".ckpt" in model_name_or_path),
+                    config=config,
+                )
         else:
             logger.info("Training new model from scratch")
             self._model = AutoModelForSeq2SeqLM.from_config(config)

@@ -140,13 +140,13 @@ def parse_args():
             "Note that this feature is still experimental in HF Transformers."
         ),
     )
-    # args = parser.parse_args()
-    args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name based*on*the*previous*passage --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp2 --output_dir ./p3_exp1""".split(" "))
+    args = parser.parse_args()
+    # args = parser.parse_args("""--dataset_name super_glue --dataset_config_name cb --template_name based*on*the*previous*passage --model_name_or_path /mnt/bn/data-tns-live-llm/leon/datasets/p3_exp2 --output_dir ./p3_exp1""".split(" "))
 
     return args
 
 def is_T(name):
-    if "T0" in name or "t5" in name: return 1
+    if "T0" in name or "t5" in name or 'config.json' in os.listdir(name): return 1
     else: return 0
 
 def main():
@@ -241,6 +241,7 @@ def main():
         )
     #——————————————————————————————————————————————————————————————————#
     else:
+        print("use unsloth model")
         from unsloth import FastLanguageModel
         model,_ = FastLanguageModel.from_pretrained(args.model_name_or_path, dtype = torch.float16, load_in_4bit=True)
 
