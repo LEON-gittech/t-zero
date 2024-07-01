@@ -142,6 +142,7 @@ def parse_args():
     )
     parser.add_argument(
         "--adapter",
+        type=int,
         default = 0
     )
     args = parser.parse_args()
@@ -209,7 +210,7 @@ def main():
     
     #——————————————————————————————————————————————————————————————————#
     config = None
-    if is_T(args.model_name_or_path) and args.adapter!=1:
+    if args.adapter != 1 and is_T(args.model_name_or_path):
         if args.config_name:
             config = AutoConfig.from_pretrained(args.config_name)
         elif args.model_name_or_path:
